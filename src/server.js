@@ -1,8 +1,17 @@
 import express from 'express';
 import { MongoClient } from 'mongodb';
+import { fileURLToPath } from 'url';
+import path, { dirname } from 'path';
+
+console.log(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
+console.log(__filename);
+const __dirname = dirname(__filename);
+console.log(__dirname);
 
 const app = express();
 
+app.use(express.static(path.join(__dirname, '/build')));
 app.use(express.json());
 
 const withDB = async (operations, res) => {
@@ -32,6 +41,7 @@ app.get('/api/articles/:name', async (req, res) => {
 
 app.post('/api/articles/:name/upvote', async (req, res) => {
     const articleName = req.params.name;
+
     withDB(async (db) => {
         const articleInfo = await db.collection('articles').findOne({ name: articleName });
         await db.collection('articles').updateOne({ name: articleName }, {
@@ -47,6 +57,7 @@ app.post('/api/articles/:name/upvote', async (req, res) => {
 app.post('/api/articles/:name/add-comment', (req, res) => {
     const { username, text } = req.body;
     const articleName = req.params.name;
+
     withDB(async (db) => {
         const articleInfo = await db.collection('articles').findOne({ name: articleName });
 
@@ -55,10 +66,13 @@ app.post('/api/articles/:name/add-comment', (req, res) => {
                 comments: articleInfo.comments.concat({ username, text }),
             },
         });
-
         const updatedArticleInfo = await db.collection('articles').findOne({ name: articleName });
         res.status(200).json(updatedArticleInfo);
     }, res);
+});
+
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname + '/build/index.html'));
 })
 
 app.listen(8000, () => console.log('Listening on port 8000'));
